@@ -1,0 +1,9 @@
+Flask==3.0.0
+Flask-SocketIO==5.3.6
+python-engineio==4.8.0
+python-socketio==5.10.0
+Werkzeug==3.0.1
+gunicorn==21.2.0
+eventlet==0.33.3
+psycopg2-binary==2.9.9
+supabase==2.3.4

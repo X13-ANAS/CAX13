@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WS Chat Application</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            margin: 0; display: flex; 
+            height: 100vh; height: 100dvh; 
+            background-image: linear-gradient(rgba(5, 8, 15, 0.3), rgba(5, 8, 15, 0.3)), url('/static/WS.jpg'); 
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed; 
+            color: #e2e8f0; 
+            overflow: hidden; 
+        }
+
+        #sidebar, #main {
+            background: rgba(10, 15, 25, 0.15); 
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px); 
+            border: 1px solid rgba(0, 240, 255, 0.15); 
+            display: flex; flex-direction: column;
+        }
+        #sidebar { width: 320px; border-right: 1px solid rgba(0, 240, 255, 0.2); }
+        #main { flex: 1; position: relative; width: calc(100% - 320px); height: 100%; }
+
+        #sidebar-header, #chat-header { 
+            padding: 15px; 
+            background: rgba(5, 8, 15, 0.6); 
+            border-bottom: 1px solid rgba(176, 38, 255, 0.3); 
+            font-weight: bold; display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            color: #fff;
+            flex-shrink: 0;
+        }
+
+        .logout-btn { background: transparent; color: #ff4444; border: 1px solid #ff4444; text-decoration: none; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: bold; transition: 0.3s; box-shadow: inset 0 0 5px rgba(255,68,68,0.2);}
+        .logout-btn:hover { background: #ff4444; color: white; box-shadow: 0 0 15px #ff4444; }
+
+        .sidebar-title { padding: 12px 15px; background: rgba(0,0,0,0.3); font-size: 11px; font-weight: 800; color: #00f0ff; text-transform: uppercase; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(0,240,255,0.1); letter-spacing: 1.5px;}
+        .create-group-btn { background: transparent; color: #00f0ff; border: 1px solid #00f0ff; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; font-weight: bold; line-height: 22px; text-align: center; padding: 0; transition: 0.3s;}
+        .create-group-btn:hover { background: #00f0ff; color: #000; box-shadow: 0 0 10px #00f0ff; }
+
+        .search-box { padding: 10px 15px; background: rgba(0,0,0,0.4); border-bottom: 1px solid rgba(0,240,255,0.1);}
+        .search-box input { width: 100%; padding: 10px 15px; border-radius: 8px; border: 1px solid rgba(0,240,255,0.3); outline: none; font-size: 14px; background: rgba(0,0,0,0.6); color: #00f0ff; transition: 0.3s;}
+        .search-box input:focus { border-color: #b026ff; box-shadow: 0 0 15px rgba(176,38,255,0.4); background: rgba(0,0,0,0.8);}
+
+        .list-container { overflow-y: auto; flex: 1; -webkit-overflow-scrolling: touch; }
+        #user-list, #custom-groups-list, #main-group { list-style: none; padding: 0; margin: 0; }
+        #user-list li, #custom-groups-list li, #main-group li { 
+            padding: 12px 15px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 15px;
+            display: flex; justify-content: space-between; align-items: center; transition: 0.2s; color: #a0aec0;
+        }
+        #user-list li:hover, #custom-groups-list li:hover { background: rgba(176, 38, 255, 0.15); color: #fff; }
+        .contact-name { flex: 1; display: flex; align-items: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500;}
+        .active-user { background: rgba(0, 240, 255, 0.08) !important; border-left: 4px solid #00f0ff; color: #fff !important; text-shadow: 0 0 8px rgba(0,240,255,0.5);}
+        .action-btn { color: #666; font-size: 16px; border: none; background: none; cursor: pointer; transition: 0.3s; padding: 0 5px; }
+        .action-btn:hover { color: #ff4444; text-shadow: 0 0 10px #ff4444; }
+
+        .mobile-back-btn { display: none; background: none; border: none; color: #00f0ff; font-size: 20px; cursor: pointer; margin-right: 10px; padding: 0; align-items: center; text-shadow: 0 0 5px #00f0ff;}
+        .chat-title-container { display: flex; align-items: center; overflow: hidden; flex: 1; margin-right: 10px; color: #fff;}
+        #chat-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+        .header-actions { display: flex; gap: 8px; flex-shrink: 0;} 
+        .btn-action { background: transparent; border: 1px solid #00f0ff; color: #00f0ff; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 13px; transition: 0.3s;}
+        .btn-action:hover { background: #00f0ff; color: #000; box-shadow: 0 0 15px rgba(0, 240, 255, 0.6); }
+
+        #chat-box { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; -webkit-overflow-scrolling: touch; background: transparent; }
+        .msg { max-width: 75%; padding: 12px 16px; margin-bottom: 12px; border-radius: 8px; font-size: 14px; line-height: 1.4; position: relative; word-wrap: break-word; box-shadow: 0 4px 15px rgba(0,0,0,0.5); flex-shrink: 0; }
+        .msg.received { align-self: flex-start; background: rgba(15, 20, 30, 0.85); backdrop-filter: blur(8px); border: 1px solid rgba(0, 240, 255, 0.3); border-left: 3px solid #00f0ff; color: #e2e8f0; }
+        .msg.sent { align-self: flex-end; background: linear-gradient(135deg, rgba(176, 38, 255, 0.85), rgba(80, 20, 200, 0.85)); color: white; backdrop-filter: blur(8px); border: 1px solid rgba(255, 255, 255, 0.15); border-right: 3px solid #00f0ff; }
+        .msg-sender { font-weight: 800; font-size: 11px; display: block; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px; color: #00f0ff;}
+        .msg.sent .msg-sender { color: #e0f2f1; }
+        .delete-btn { display: none; position: absolute; top: -10px; right: -10px; background: #000; color: #ff4444; border: 1px solid #ff4444; border-radius: 50%; width: 24px; height: 24px; text-align: center; line-height: 22px; cursor: pointer; font-size: 12px; box-shadow: 0 0 10px rgba(255,68,68,0.5); transition: 0.2s;}
+        .msg.sent:hover .delete-btn { display: block; } 
+
+        #input-area { margin: 10px 20px 20px 20px; padding: 10px; background: rgba(10, 15, 25, 0.85); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid rgba(0, 240, 255, 0.3); border-radius: 16px; display: flex; gap: 10px; align-items: center; flex-wrap: nowrap; flex-shrink: 0; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 15px rgba(176, 38, 255, 0.1); }
+        input[type="text"] { flex: 1; padding: 14px 20px; border: 1px solid rgba(0,240,255,0.2); border-radius: 12px; outline: none; font-size: 14px; min-width: 0; background: rgba(0,0,0,0.5); color: #00f0ff; transition: 0.3s; }
+        input[type="text"]:focus { border-color: #b026ff; box-shadow: inset 0 0 10px rgba(176, 38, 255, 0.2); background: rgba(0,0,0,0.8); }
+        button.send-btn { padding: 12px 24px; border-radius: 12px; border: 1px solid #b026ff; background: rgba(176, 38, 255, 0.1); color: #b026ff; cursor: pointer; font-weight: bold; font-size: 14px; flex-shrink: 0; transition: 0.3s; text-transform: uppercase; letter-spacing: 1px; }
+        button.send-btn:hover { background: #b026ff; color: #fff; box-shadow: 0 0 15px rgba(176, 38, 255, 0.6); }
+        
+        .attach-btn { background: rgba(0, 240, 255, 0.05); border: 1px solid rgba(0, 240, 255, 0.3); padding: 10px 14px; font-size: 16px; border-radius: 12px; color: #00f0ff; flex-shrink: 0; cursor: pointer; transition: 0.3s; }
+        .attach-btn:hover { background: #00f0ff; color: #000; box-shadow: 0 0 15px rgba(0,240,255,0.5); }
+        #view-once-btn { border-color: rgba(255,255,255,0.2); color: #888; background: transparent; }
+        #view-once-btn.active { background: #ff4444; color: white; border-color: #ff4444; box-shadow: 0 0 15px rgba(255,68,68,0.5); }
+
+        /* 🔥 NEW: Voice Recording Animation */
+        .attach-btn.recording { background: #ff4444; color: white; border-color: #ff4444; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(255, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 68, 68, 0); } }
+
+        /* Modals */
+        .overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1000; flex-direction: column; align-items: center; justify-content: center; }
+        #video-overlay { background: rgba(0,0,0,0.95); backdrop-filter: blur(10px); }
+        .video-grid { display: flex; gap: 10px; margin-bottom: 20px; width: 95%; justify-content: center; flex-wrap: wrap;}
+        video { background: #000; border-radius: 8px; width: 45%; min-width: 150px; max-height: 300px; object-fit: cover; border: 2px solid #00f0ff; box-shadow: 0 0 20px rgba(0,240,255,0.2);}
+        
+        .btn-end { background: transparent; border: 1px solid #ff4444; color: #ff4444; padding: 12px 25px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: bold; transition: 0.3s;}
+        .btn-end:hover { background: #ff4444; color: white; box-shadow: 0 0 15px rgba(255,68,68,0.6); }
+        
+        .btn-mute { background: rgba(255,255,255,0.1); border: 1px solid #fff; color: #fff; padding: 12px 25px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: bold; transition: 0.3s;}
+        .btn-mute:hover { background: rgba(255,255,255,0.2); }
+        
+        #secret-overlay { background: rgba(0,0,0,0.98); backdrop-filter: blur(15px); z-index: 2000; color: white; }
+        .secret-box { background: rgba(10, 0, 0, 0.8); padding: 30px; border-radius: 12px; border: 1px solid #ff4444; text-align: center; width: 90%; max-width: 400px; box-shadow: 0 0 40px rgba(255,68,68,0.3); }
+
+        #group-modal, #blocked-modal { background: rgba(0,0,0,0.7); z-index: 3000; backdrop-filter: blur(8px); }
+        .group-modal-box { background: rgba(10, 15, 25, 0.95); padding: 25px; border-radius: 12px; box-shadow: 0 0 40px rgba(0,0,0,0.8); width: 90%; max-width: 350px; border: 1px solid rgba(0,240,255,0.3); color: #fff;}
+        .checkbox-list { max-height: 200px; overflow-y: auto; margin: 15px 0; border: 1px solid rgba(255,255,255,0.1); padding: 10px; border-radius: 8px; background: rgba(0,0,0,0.5);}
+
+        @media (max-width: 768px) {
+            #sidebar { width: 100%; display: flex; border-right: none; }
+            #main { display: none; width: 100%; height: 100%; }
+            body.mobile-chat-active #sidebar { display: none !important; }
+            body.mobile-chat-active #main { display: flex !important; }
+            .mobile-back-btn { display: flex; }
+            .btn-action { padding: 6px 8px; font-size: 11px; }
+            #chat-header { padding: 10px; }
+            #chat-box { padding: 15px 10px; }
+            .msg { max-width: 85%; padding: 10px 14px; font-size: 14px; }
+            .attach-btn { padding: 10px; font-size: 14px; }
+            video { width: 100%; max-height: 200px; } 
+            #input-area { margin: 5px 10px 10px 10px; border-radius: 12px; padding-bottom: calc(10px + env(safe-area-inset-bottom)); } 
+        }
+    </style>
+</head>
+<body>
+
+<div id="sidebar">
+    <div id="sidebar-header">
+        <span style="font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60%;">👤 {{ my_name }}</span>
+        <div style="display:flex; gap:10px; align-items:center;">
+            <button onclick="openBlockedModal()" style="background:none; border:none; cursor:pointer; font-size:16px; padding:0;" title="Manage Blocked Users">🚫</button>
+            <a href="/logout" class="logout-btn">Logout</a>
+        </div>
+    </div>
+    <div class="search-box">
+        <input type="text" id="contact-search" placeholder="Search contacts..." onkeyup="filterContacts()">
+    </div>
+    <div class="list-container">
+        <ul id="main-group" style="list-style: none; padding:0; margin:0;">
+            <li id="global-lounge" class="active-user">
+                <div class="contact-name" onclick="setRecipient(null, false, '📢 Group Lounge')">📢 Group Lounge</div>
+            </li>
+        </ul>
+        <div class="sidebar-title">My Groups <button class="create-group-btn" onclick="openGroupModal()">+</button></div>
+        <ul id="custom-groups-list"></ul>
+        <div class="sidebar-title">My Contacts</div>
+        <ul id="user-list"></ul>
+    </div>
+</div>
+
+<div id="main">
+    <div id="chat-header">
+        <div class="chat-title-container">
+            <button class="mobile-back-btn" onclick="showMobileSidebar()">⬅️</button>
+            <span id="chat-title">📢 Group Lounge</span>
+        </div>
+        <div class="header-actions">
+            <div id="call-buttons" style="display: none; gap: 5px;">
+                <button class="btn-action" onclick="startCall(false)">📞</button>
+                <button class="btn-action" onclick="startCall(true)">📹</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="incoming-call-overlay" class="overlay" style="z-index: 5000; background: rgba(0,0,0,0.95); text-align: center;">
+        <div style="background: rgba(10, 15, 25, 0.9); padding: 40px; border-radius: 20px; border: 1px solid #00f0ff; box-shadow: 0 0 30px rgba(0, 240, 255, 0.2);">
+            <h2 id="incoming-caller-name" style="color: #fff; margin-bottom: 10px; font-size: 24px;">Someone is calling...</h2>
+            <p id="incoming-call-type" style="color: #00f0ff; margin-bottom: 30px; font-weight: bold; letter-spacing: 1px;"></p>
+            <div style="display: flex; gap: 20px; justify-content: center;">
+                <button onclick="acceptCall()" style="background: #25D366; color: white; border: none; padding: 15px 30px; border-radius: 50px; font-size: 16px; font-weight: bold; cursor: pointer;">📞 Answer</button>
+                <button onclick="rejectCall()" style="background: #ff4444; color: white; border: none; padding: 15px 30px; border-radius: 50px; font-size: 16px; font-weight: bold; cursor: pointer;">🛑 Decline</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="group-modal" class="overlay">
+        <div class="group-modal-box">
+            <h3 style="margin-top: 0; color: #00f0ff;">Create Private Group</h3>
+            <input type="text" id="new-group-name" placeholder="Group Name..." style="width:100%; border:1px solid #ccc; margin-bottom:10px; padding:10px; border-radius:5px;">
+            <div class="checkbox-list" id="group-member-checkboxes"></div>
+            <div style="display: flex; gap: 10px;">
+                <button onclick="submitGroup()" class="send-btn" style="flex:1;">Create</button>
+                <button onclick="closeGroupModal()" class="send-btn" style="flex:1; background:#ff4444; color:white;">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="blocked-modal" class="overlay">
+        <div class="group-modal-box">
+            <h3 style="margin-top: 0; color: #ff4444;">Blocked Users</h3>
+            <ul id="blocked-users-list" style="list-style:none; padding:0; max-height:200px; overflow-y:auto; margin-bottom:15px;"></ul>
+            <button onclick="closeBlockedModal()" class="send-btn" style="width: 100%; background: #888; color:white;">Close</button>
+        </div>
+    </div>
+
+    <div id="video-overlay" class="overlay">
+        <h2 style="color: white; margin-bottom: 10px; font-size: 18px;" id="call-status">Calling...</h2>
+        <div class="video-grid">
+            <video id="local-video" autoplay muted playsinline></video>
+            <video id="remote-video" autoplay playsinline controls></video>
+        </div>
+        
+        <div style="display: flex; gap: 15px; margin-top: 10px;">
+            <button id="mute-btn" class="btn-mute" onclick="toggleMute()">🎙️ Mute</button>
+            <button class="btn-end" onclick="endCall(false)">🛑 End Call</button>
+        </div>
+    </div>
+
+    <div id="secret-overlay" class="overlay">
+        <div class="secret-box">
+            <h3 style="color: #ff4444; margin-top:0;">💣 View Once Message</h3>
+            <div id="secret-content" style="margin: 20px 0; font-size: 16px; padding: 15px; background: #111; border-radius: 10px; word-wrap: break-word;"></div>
+            <button onclick="closeSecret()" class="send-btn" style="background: #ff4444; width: 100%; color:white;">Destroy Message</button>
+        </div>
+    </div>
+
+    <div id="chat-box"></div>
+    <div id="input-area">
+        <input type="file" id="file-input" style="display: none;" onchange="uploadFile()" accept="*/*">
+        <button class="attach-btn" onclick="document.getElementById('file-input').click()" title="Attach File">📎</button>
+        <button id="view-once-btn" class="attach-btn" onclick="toggleViewOnce()" title="View Once Message">💣</button>
+        <button id="mic-btn" class="attach-btn" onclick="toggleVoiceRecord()" title="Voice Message">🎤</button>
+        
+        <input type="text" id="m" placeholder="Type a message..." onkeypress="handleKeyPress(event)">
+        <button onclick="sendMessage()" class="send-btn">Send</button>
+    </div>
+</div>
+
+<script>
+    const socket = io();
+    let myName = "{{ my_name }}"; 
+    let currentRecipient = null; 
+    let allMessages = []; 
+    let myCustomGroups = []; 
+    let globalContacts = []; 
+    let blockedUsers = []; 
+    let isViewOnceMode = false;
+
+    // WebRTC Variables
+    let localStream, peerConnection;
+    let pendingCallData = null; 
+    let pendingIceCandidates = []; 
+    let activeCallUser = null; 
+    let isMuted = false; 
+
+    // 🔥 NEW: Voice Message Variables
+    let isRecordingVoice = false;
+    let voiceRecorder;
+    let voiceChunks = [];
+
+    // ⚠️ REPLACE THIS WITH YOUR METERED.CA TURN SERVER CREDENTIALS
+    const rtcConfig = {
+        iceServers: [
+            { urls: "stun:stun.l.google.com:19302" }
+        ]
+    };
+
+    // --- Push Notifications Setup ---
+    if ("Notification" in window && Notification.permission !== "denied") {
+        Notification.requestPermission();
+    }
+    
+    const notifySound = new Audio('https://actions.google.com/sounds/v1/ui_mid/ui_lock.ogg');
+
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js').then(function(reg) {
+            console.log('Mobile Service Worker Registered!');
+        }).catch(function(err) {});
+    }
+
+    socket.emit('register', myName);
+
+    // --- UI/UX Functions ---
+    function showMobileChat() {
+        document.body.classList.add('mobile-chat-active');
+        const chatBox = document.getElementById('chat-box');
+        setTimeout(() => { chatBox.scrollTop = chatBox.scrollHeight; }, 100);
+    }
+    function showMobileSidebar() { document.body.classList.remove('mobile-chat-active'); }
+    function filterContacts() {
+        const term = document.getElementById('contact-search').value.toLowerCase();
+        document.querySelectorAll('#user-list li, #custom-groups-list li').forEach(li => {
+            const name = li.querySelector('.contact-name').innerText.toLowerCase();
+            li.style.display = name.includes(term) ? "flex" : "none";
+        });
+    }
+
+    // --- User Management ---
+    function blockUser(t) { if(confirm(`Block ${t}?`)) fetch('/block_user', {method:'POST', body:new URLSearchParams({target:t})}).then(()=>socket.emit('register', myName)); }
+    function unblockUser(t) { fetch('/unblock_user', {method:'POST', body:new URLSearchParams({target:t})}).then(()=>socket.emit('register', myName)); closeBlockedModal(); }
+    function openBlockedModal() {
+        document.getElementById('blocked-modal').style.display = 'flex';
+        const list = document.getElementById('blocked-users-list');
+        list.innerHTML = blockedUsers.length ? blockedUsers.map(u => `<li style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>${u}</span><button onclick="unblockUser('${u}')">Unblock</button></li>`).join('') : '<li>No blocked users.</li>';
+    }
+    function closeBlockedModal() { document.getElementById('blocked-modal').style.display = 'none'; }
+
+    // --- Groups ---
+    function openGroupModal() {
+        document.getElementById('group-modal').style.display = 'flex';
+        document.getElementById('group-member-checkboxes').innerHTML = globalContacts.filter(c => c !== myName && !blockedUsers.includes(c)).map(c => `<label style="display:block;"><input type="checkbox" value="${c}"> ${c}</label>`).join('');
+    }
+    function closeGroupModal() { document.getElementById('group-modal').style.display = 'none'; document.getElementById('new-group-name').value = ''; }
+    function submitGroup() {
+        const n = document.getElementById('new-group-name').value;
+        const m = Array.from(document.querySelectorAll('#group-member-checkboxes input:checked')).map(c=>c.value);
+        if(!n || !m.length) return alert("Needs name and 1+ friend.");
+        m.push(myName); socket.emit('create_group', {name:n, members:m}); closeGroupModal();
+    }
+    function leaveGroup(id, name) { if(confirm(`Leave ${name}?`)) fetch('/leave_group', {method:'POST', body:new URLSearchParams({group_id:id})}).then(()=>socket.emit('register', myName)); }
+
+    function toggleViewOnce() {
+        isViewOnceMode = !isViewOnceMode;
+        document.getElementById('view-once-btn').classList.toggle('active');
+        document.getElementById('m').placeholder = isViewOnceMode ? "SECRET message..." : "Type a message...";
+    }
+
+    socket.on('update_users', data => {
+        globalContacts = data.contacts; blockedUsers = data.blocked || []; myCustomGroups = data.groups || [];
+        document.getElementById('user-list').innerHTML = data.contacts.filter(c => c !== myName && !blockedUsers.includes(c)).map(c => `<li class="${currentRecipient===c?'active-user':''}"><div class="contact-name" onclick="setRecipient('${c}', false, '💬 ${c}')">${data.online.includes(c)?"🟢":"⚪"} ${c}</div><button class="action-btn" onclick="blockUser('${c}')">🚫</button></li>`).join('');
+        renderSidebar();
+    });
+    
+    socket.on('group_added', g => { myCustomGroups.push(g); renderSidebar(); });
+    socket.on('load_history', h => { allMessages = h; renderChat(); });
+    
+    // --- Message Receiver ---
+    socket.on('receive_message', m => { 
+        allMessages.push(m); 
+        renderChat(); 
+
+        if (m.user !== myName) {
+            notifySound.play().catch(e => console.log("Autoplay blocked sound"));
+
+            if (document.hidden && "Notification" in window && Notification.permission === "granted") {
+                let notificationBody = m.message;
+                if (notificationBody.startsWith('[VIEW_ONCE]:')) notificationBody = "💣 Sent a View-Once message";
+                else if (notificationBody.includes('<img')) notificationBody = "📷 Sent an image";
+                else if (notificationBody.includes('<video')) notificationBody = "📹 Sent a video";
+                else if (notificationBody.includes('<audio')) notificationBody = "🎤 Sent a voice message"; // Added Audio tag parsing
+                else if (notificationBody.includes('class="doc-link"')) notificationBody = "📄 Sent a file";
+                else {
+                    const tmp = document.createElement('div');
+                    tmp.innerHTML = notificationBody;
+                    notificationBody = tmp.textContent || tmp.innerText || "";
+                }
+
+                navigator.serviceWorker.ready.then(function(registration) {
+                    registration.showNotification(`New message from ${m.user}`, {
+                        body: notificationBody,
+                        icon: '/static/WS.jpg',
+                        vibrate: [200, 100, 200, 100, 200], 
+                        tag: 'ws-chat-msg',
+                        renotify: true
+                    });
+                });
+            }
+        }
+    });
+
+    socket.on('message_deleted', id => { allMessages = allMessages.filter(m => m.id !== id); renderChat(); });
+
+    function renderSidebar() {
+        document.getElementById('custom-groups-list').innerHTML = myCustomGroups.map(g => `<li class="${currentRecipient===g.id?'active-user':''}"><div class="contact-name" onclick="setRecipient('${g.id}', true, '🛡️ ${g.name}')">🛡️ ${g.name}</div><button class="action-btn" onclick="leaveGroup('${g.id}', '${g.name}')">🚪</button></li>`).join('');
+    }
+
+    function setRecipient(id, isGroup, headerTitle) {
+        currentRecipient = id;
+        document.getElementById('chat-title').innerText = headerTitle;
+        document.getElementById('call-buttons').style.display = (id && !isGroup) ? "flex" : "none";
+        document.getElementById('global-lounge').className = (id === null) ? 'active-user' : '';
+        renderSidebar(); 
+        document.querySelectorAll('#user-list li').forEach(li => li.classList.remove('active-user'));
+        document.querySelectorAll('#user-list .contact-name').forEach(n => { if(n.innerText.includes(id)) n.parentElement.classList.add('active-user'); });
+        renderChat(); showMobileChat(); 
+    }
+
+    function renderChat() {
+        const box = document.getElementById('chat-box');
+        box.innerHTML = ''; 
+        const filtered = allMessages.filter(m => !blockedUsers.includes(m.user) && (currentRecipient===null ? !m.recipient : currentRecipient.startsWith("GROUP_") ? m.recipient===currentRecipient : (m.user===currentRecipient && m.recipient===myName) || (m.user===myName && m.recipient===currentRecipient)));
+        
+        filtered.forEach(data => {
+            const isSent = data.user === myName;
+            let div = document.createElement('div'); div.className = `msg ${isSent ? 'sent' : 'received'}`;
+            let content = data.message;
+            if(content.startsWith('[VIEW_ONCE]:')) {
+                const act = content.replace('[VIEW_ONCE]:', '');
+                content = isSent ? `<i>💣 View-Once sent</i>` : `<button class="btn-action" style="background:#ff4444;color:white;" onclick="viewSecret(${data.id}, '${btoa(encodeURIComponent(act))}')">👁️ View</button>`;
+            } else if(!content.includes('<img') && !content.includes('<video') && !content.includes('<audio') && !content.includes('class="doc-link"')) {
+                // 🔥 Allow <audio> tags to render safely
+                const tmp = document.createElement('div'); tmp.textContent = content; content = tmp.innerHTML; 
+            }
+            div.innerHTML = `${isSent?`<span class="delete-btn" onclick="socket.emit('delete_message', ${data.id})">🗑️</span>`:''}<span class="msg-sender">${data.user}</span>${content}`;
+            box.appendChild(div);
+        });
+        box.scrollTo({ top: box.scrollHeight, behavior: 'smooth' });
+    }
+
+    function sendMessage() {
+        const inp = document.getElementById('m');
+        if(inp.value.trim()) {
+            socket.emit('send_message', {user: myName, recipient: currentRecipient, message: isViewOnceMode ? '[VIEW_ONCE]:'+inp.value : inp.value});
+            inp.value = '';
+        }
+    }
+    function handleKeyPress(e) { if(e.key === 'Enter') sendMessage(); }
+
+    function viewSecret(id, enc) {
+        document.getElementById('secret-content').innerHTML = decodeURIComponent(atob(enc));
+        document.getElementById('secret-overlay').style.display = 'flex';
+        socket.emit('delete_message', id);
+    }
+    function closeSecret() { document.getElementById('secret-overlay').style.display = 'none'; document.getElementById('secret-content').innerHTML = ''; }
+
+    // --- File & Voice Upload Logic ---
+    async function uploadFile() {
+        const file = document.getElementById('file-input').files[0]; if(!file) return;
+        const form = new FormData(); form.append('file', file);
+        const res = await fetch('/upload', {method:'POST', body:form});
+        const [url, name] = (await res.text()).split('|');
+        
+        let html = file.type.startsWith('image/') ? `<img src="${url}" style="max-width:100%; border-radius:8px;">` : 
+                   file.type.startsWith('video/') ? `<video src="${url}" controls style="max-width:100%; border-radius:8px;"></video>` : 
+                   file.type.startsWith('audio/') ? `<audio src="${url}" controls style="max-width:100%; height:40px;"></audio>` : 
+                   `<a href="${url}" class="doc-link" target="_blank">📄 ${name}</a>`;
+                   
+        socket.emit('send_message', {user:myName, recipient:currentRecipient, message:isViewOnceMode ? '[VIEW_ONCE]:'+html : html});
+    }
+
+    // 🔥 NEW: Voice Recording Logic
+    async function toggleVoiceRecord() {
+        const micBtn = document.getElementById('mic-btn');
+        const inputField = document.getElementById('m');
+
+        if (!isRecordingVoice) {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                voiceRecorder = new MediaRecorder(stream);
+                voiceChunks = [];
+
+                voiceRecorder.ondataavailable = e => {
+                    if (e.data.size > 0) voiceChunks.push(e.data);
+                };
+
+                voiceRecorder.onstop = async () => {
+                    const audioBlob = new Blob(voiceChunks, { type: 'audio/webm' });
+                    const file = new File([audioBlob], `voice_${Date.now()}.webm`, { type: 'audio/webm' });
+                    
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    
+                    try {
+                        const res = await fetch('/upload', {method:'POST', body:formData});
+                        const [url, name] = (await res.text()).split('|');
+                        let html = `<audio src="${url}" controls style="max-width:100%; height:40px; outline:none; border-radius: 8px;"></audio>`;
+                        socket.emit('send_message', {user:myName, recipient:currentRecipient, message:isViewOnceMode ? '[VIEW_ONCE]:'+html : html});
+                    } catch(err) {
+                        alert('Voice message upload failed.');
+                    }
+                    stream.getTracks().forEach(track => track.stop());
+                };
+
+                voiceRecorder.start();
+                isRecordingVoice = true;
+                micBtn.classList.add('recording');
+                micBtn.innerHTML = '🛑';
+                inputField.placeholder = "Recording voice message... Click stop to send.";
+                inputField.disabled = true;
+
+            } catch (err) {
+                alert("Microphone access denied.");
+            }
+        } else {
+            // Stop recording & Send
+            voiceRecorder.stop();
+            isRecordingVoice = false;
+            micBtn.classList.remove('recording');
+            micBtn.innerHTML = '🎤';
+            inputField.placeholder = isViewOnceMode ? "SECRET message..." : "Type a message...";
+            inputField.disabled = false;
+        }
+    }
+
+
+    // --- WebRTC (Video/Audio) Logic ---
+    async function setupMedia(isVideo) {
+        try {
+            localStream = await navigator.mediaDevices.getUserMedia({ video: isVideo, audio: true });
+            document.getElementById('local-video').srcObject = localStream;
+            document.getElementById('video-overlay').style.display = 'flex';
+            return true;
+        } catch (e) { alert("Camera/Mic denied."); return false; }
+    }
+
+    function toggleMute() {
+        if (localStream) {
+            const audioTracks = localStream.getAudioTracks();
+            if (audioTracks.length > 0) {
+                isMuted = !isMuted;
+                audioTracks[0].enabled = !isMuted; 
+                
+                const muteBtn = document.getElementById('mute-btn');
+                muteBtn.innerHTML = isMuted ? '🔇 Unmute' : '🎙️ Mute';
+                muteBtn.style.background = isMuted ? '#ff4444' : 'rgba(255,255,255,0.1)';
+                muteBtn.style.borderColor = isMuted ? '#ff4444' : '#fff';
+            }
+        }
+    }
+
+    function createPeerConnection(remoteUser) {
+        peerConnection = new RTCPeerConnection(rtcConfig);
+        localStream.getTracks().forEach(t => peerConnection.addTrack(t, localStream));
+        peerConnection.ontrack = e => {
+            const rv = document.getElementById('remote-video');
+            rv.srcObject = e.streams[0];
+            rv.play().catch(err => console.error("Autoplay blocked:", err));
+            document.getElementById('call-status').innerText = `Connected with ${remoteUser}`;
+        };
+        peerConnection.onicecandidate = e => { 
+            if(e.candidate) socket.emit('webrtc_ice_candidate', {recipient:remoteUser, candidate:e.candidate, sender:myName}); 
+        };
+    }
+
+    async function startCall(isVideo) {
+        if(!currentRecipient || currentRecipient.startsWith("GROUP_")) return;
+        document.getElementById('call-status').innerText = `Ringing ${currentRecipient}...`;
+        if(!await setupMedia(isVideo)) return;
+        createPeerConnection(currentRecipient);
+        const offer = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offer);
+        
+        activeCallUser = currentRecipient; 
+        socket.emit('webrtc_offer', {recipient:currentRecipient, offer:offer, sender:myName, isVideo:isVideo});
+    }
+
+    socket.on('webrtc_offer', async data => {
+        if(blockedUsers.includes(data.sender)) return;
+        pendingCallData = data;
+        
+        const callTypeStr = data.isVideo ? '📹 VIDEO CALL' : '📞 VOICE CALL';
+        document.getElementById('incoming-caller-name').innerText = data.sender;
+        document.getElementById('incoming-call-type').innerText = callTypeStr;
+        document.getElementById('incoming-call-overlay').style.display = 'flex';
+        
+        notifySound.play().catch(e=>console.log("Audio blocked"));
+
+        if (document.hidden && "Notification" in window && Notification.permission === "granted") {
+            navigator.serviceWorker.ready.then(function(registration) {
+                registration.showNotification(callTypeStr, {
+                    body: `${data.sender} is calling you...`,
+                    icon: '/static/WS.jpg',
+                    vibrate: [500, 250, 500, 250, 500, 250, 500], 
+                    requireInteraction: true, 
+                    tag: 'ws-chat-call'
+                });
+            });
+        }
+    });
+
+    socket.on('webrtc_ice_candidate', async data => { 
+        if (peerConnection && peerConnection.remoteDescription) {
+            await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+        } else {
+            pendingIceCandidates.push(data.candidate); 
+        }
+    });
+
+    async function acceptCall() {
+        document.getElementById('incoming-call-overlay').style.display = 'none';
+        
+        navigator.serviceWorker.ready.then(function(registration) {
+            registration.getNotifications({tag: 'ws-chat-call'}).then(function(notifications) {
+                notifications.forEach(n => n.close());
+            });
+        });
+        
+        const data = pendingCallData;
+        setRecipient(data.sender, false, `💬 ${data.sender}`);
+        document.getElementById('call-status').innerText = `Connecting...`;
+        
+        if(!await setupMedia(data.isVideo)) { pendingIceCandidates = []; return; }
+        
+        createPeerConnection(data.sender);
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
+        
+        while (pendingIceCandidates.length > 0) {
+            await peerConnection.addIceCandidate(new RTCIceCandidate(pendingIceCandidates.shift()));
+        }
+        
+        const answer = await peerConnection.createAnswer();
+        await peerConnection.setLocalDescription(answer);
+        
+        activeCallUser = data.sender; 
+        socket.emit('webrtc_answer', {recipient:data.sender, answer:answer});
+    }
+
+    function rejectCall() {
+        document.getElementById('incoming-call-overlay').style.display = 'none';
+        
+        navigator.serviceWorker.ready.then(function(registration) {
+            registration.getNotifications({tag: 'ws-chat-call'}).then(function(notifications) {
+                notifications.forEach(n => n.close());
+            });
+        });
+
+        if (pendingCallData) {
+            socket.emit('reject_call', { sender: pendingCallData.sender, recipient: myName });
+        }
+
+        pendingCallData = null;
+        pendingIceCandidates = [];
+    }
+
+    socket.on('webrtc_answer', async data => { await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer)); });
+
+    function endCall(isRemote = false) {
+        if(peerConnection) { peerConnection.close(); peerConnection = null; }
+        if(localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
+        document.getElementById('video-overlay').style.display = 'none';
+        document.getElementById('remote-video').srcObject = null;
+        
+        document.getElementById('incoming-call-overlay').style.display = 'none';
+        
+        navigator.serviceWorker.ready.then(function(registration) {
+            registration.getNotifications({tag: 'ws-chat-call'}).then(function(notifications) {
+                notifications.forEach(n => n.close());
+            });
+        });
+        
+        pendingIceCandidates = []; 
+        pendingCallData = null;
+
+        isMuted = false;
+        const muteBtn = document.getElementById('mute-btn');
+        if(muteBtn) {
+            muteBtn.innerHTML = '🎙️ Mute';
+            muteBtn.style.background = 'rgba(255,255,255,0.1)';
+            muteBtn.style.borderColor = '#fff';
+        }
+
+        if (!isRemote && activeCallUser) {
+            socket.emit('end_call', { recipient: activeCallUser, sender: myName });
+        }
+        activeCallUser = null; 
+    }
+
+    socket.on('call_ended', async data => { endCall(true); });
+    socket.on('call_rejected', async data => { 
+        alert(`${data.recipient} declined your call.`);
+        endCall(true); 
+    });
+</script>
+</body>
+</html>

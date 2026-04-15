@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Register - Premium Access</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Reset & Base */
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Poppins', sans-serif; }
+
+        /* 🌌 Deep Cyber Grid Background */
+        body {
+            display: flex; justify-content: center; align-items: center;
+            min-height: 100vh; min-height: 100dvh;
+            background-color: #03050a;
+            background-image: 
+                linear-gradient(rgba(0, 240, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 240, 255, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            background-position: center;
+            overflow: hidden;
+            position: relative;
+            animation: gridMove 20s linear infinite;
+        }
+
+        @keyframes gridMove {
+            0% { background-position: 0 0; }
+            100% { background-position: 40px 40px; }
+        }
+
+        /* 🟣 Animated Background Orbs */
+        .bg-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(100px);
+            animation: float 15s infinite ease-in-out alternate;
+            z-index: 0;
+        }
+        .orb-1 { width: 450px; height: 450px; background: rgba(0, 240, 255, 0.15); top: -150px; left: -150px; animation-delay: 0s; }
+        .orb-2 { width: 550px; height: 550px; background: rgba(176, 38, 255, 0.15); bottom: -200px; right: -150px; animation-delay: -5s; }
+
+        @keyframes float {
+            0% { transform: translate(0, 0) scale(1) rotate(0deg); }
+            100% { transform: translate(80px, 80px) scale(1.3) rotate(20deg); }
+        }
+
+        /* 🧊 Ultimate Glassmorphism Container */
+        .auth-box {
+            position: relative;
+            z-index: 1;
+            background: linear-gradient(135deg, rgba(15, 25, 40, 0.7), rgba(5, 10, 20, 0.8));
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-top: 1px solid rgba(0, 240, 255, 0.3);
+            border-left: 1px solid rgba(0, 240, 255, 0.3);
+            border-radius: 30px;
+            padding: 50px 40px;
+            width: 90%;
+            max-width: 450px;
+            box-shadow: 0 40px 80px rgba(0, 0, 0, 0.8), inset 0 0 40px rgba(0, 240, 255, 0.05);
+            animation: popIn 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes popIn {
+            0% { opacity: 0; transform: scale(0.9) translateY(40px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        /* ✨ Glowing Header */
+        h2 {
+            color: #fff;
+            text-align: center;
+            margin-bottom: 40px;
+            font-size: 32px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            text-shadow: 0 0 20px rgba(0, 240, 255, 0.6);
+        }
+
+        /* 📝 Advanced Floating Label Inputs */
+        .input-group {
+            position: relative;
+            margin-bottom: 40px;
+            opacity: 0;
+            animation: slideRight 0.6s ease forwards;
+        }
+        .input-group:nth-child(1) { animation-delay: 0.3s; }
+        .input-group:nth-child(2) { animation-delay: 0.5s; }
+
+        @keyframes slideRight {
+            0% { opacity: 0; transform: translateX(-40px); }
+            100% { opacity: 1; transform: translateX(0); }
+        }
+
+        .input-group i {
+            position: absolute;
+            top: 12px;
+            left: 0;
+            color: rgba(255,255,255,0.4);
+            font-size: 18px;
+            transition: 0.3s;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 10px 10px 10px 35px;
+            font-size: 16px;
+            color: #fff;
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            outline: none;
+            transition: 0.3s;
+        }
+
+        .input-group label {
+            position: absolute;
+            top: 10px;
+            left: 35px;
+            font-size: 16px;
+            color: rgba(255, 255, 255, 0.4);
+            pointer-events: none;
+            transition: 0.3s ease all;
+        }
+
+        /* Animated Bottom Border */
+        .input-group .border-anim {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            width: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #00f0ff, transparent);
+            transition: 0.4s ease all;
+            transform: translateX(-50%);
+        }
+
+        /* Focus States */
+        .input-group input:focus ~ label,
+        .input-group input:valid ~ label {
+            top: -22px;
+            left: 0;
+            font-size: 12px;
+            font-weight: 600;
+            color: #00f0ff;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .input-group input:focus ~ i,
+        .input-group input:valid ~ i {
+            color: #00f0ff;
+            text-shadow: 0 0 10px rgba(0,240,255,0.5);
+        }
+
+        .input-group input:focus ~ .border-anim {
+            width: 100%;
+            box-shadow: 0 0 15px #00f0ff;
+        }
+
+        /* 🚀 Shimmering Action Button */
+        button {
+            position: relative;
+            width: 100%;
+            padding: 16px;
+            margin-top: 10px;
+            border: none;
+            border-radius: 15px;
+            font-size: 16px;
+            font-weight: 800;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: #fff;
+            background: linear-gradient(45deg, #00f0ff, #b026ff);
+            cursor: pointer;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(176, 38, 255, 0.4);
+            transition: 0.4s;
+            opacity: 0;
+            animation: slideUpBtn 0.6s ease forwards;
+            animation-delay: 0.7s;
+        }
+
+        @keyframes slideUpBtn {
+            0% { opacity: 0; transform: translateY(30px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Sweeping Shimmer Effect */
+        button::after {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 50%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            transform: skewX(-20deg);
+            transition: 0.5s;
+        }
+
+        button:hover {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 15px 40px rgba(0, 240, 255, 0.6);
+        }
+
+        button:hover::after {
+            left: 150%;
+            transition: 0.7s ease-in-out;
+        }
+
+        button:active { transform: translateY(1px); }
+
+        /* 🔗 Animated Links */
+        .link-container {
+            text-align: center;
+            margin-top: 35px;
+            opacity: 0;
+            animation: fadeIn 1s ease forwards;
+            animation-delay: 0.9s;
+        }
+        
+        .link {
+            color: rgba(255,255,255,0.5);
+            text-decoration: none;
+            font-size: 14px;
+            transition: 0.3s;
+        }
+
+        .link span { 
+            color: #00f0ff; 
+            font-weight: 600; 
+            position: relative;
+        }
+
+        .link span::after {
+            content: ''; position: absolute;
+            bottom: -2px; left: 0; width: 0; height: 1px;
+            background: #00f0ff; transition: 0.3s;
+        }
+
+        .link:hover { color: #fff; }
+        .link:hover span { text-shadow: 0 0 10px #00f0ff; }
+        .link:hover span::after { width: 100%; }
+
+        /* 🚨 Error Messages */
+        .flash-msg {
+            background: rgba(255, 68, 68, 0.1);
+            border-left: 4px solid #ff4444;
+            color: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-bottom: 25px;
+            display: flex; align-items: center; gap: 10px;
+            backdrop-filter: blur(5px);
+            animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+
+        /* 📱 Mobile Tuning */
+        @media (max-width: 480px) {
+            .auth-box { padding: 40px 25px; border-radius: 20px; background: rgba(10, 15, 25, 0.85); width: 95%; }
+            h2 { font-size: 26px; margin-bottom: 30px; }
+            .bg-orb { filter: blur(70px); }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-orb orb-1"></div>
+    <div class="bg-orb orb-2"></div>
+
+    <div class="auth-box">
+        <h2>System Access</h2>
+
+        {% with messages = get_flashed_messages() %}
+          {% if messages %}
+            {% for message in messages %}
+              <div class="flash-msg"><i class="fa-solid fa-triangle-exclamation"></i> {{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="/register">
+            <div class="input-group">
+                <i class="fa-solid fa-user"></i>
+                <input type="text" name="username" required autocomplete="username" minlength="3">
+                <label>Choose a Username</label>
+                <div class="border-anim"></div>
+            </div>
+            
+            <div class="input-group">
+                <i class="fa-solid fa-lock"></i>
+                <input type="password" name="password" required autocomplete="new-password" minlength="4">
+                <label>Create a Password</label>
+                <div class="border-anim"></div>
+            </div>
+            
+            <button type="submit">Initialize Account</button>
+        </form>
+        
+        <div class="link-container">
+            <a href="/login" class="link">Already integrated? <span>Login here</span></a>
+        </div>
+    </div>
+</body>
+</html>
